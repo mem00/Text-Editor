@@ -1,122 +1,208 @@
 #include <cstdlib>
 #include <ncurses.h>
 #include <iostream>
-#include <menu.h>
+#include <cstring>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <vector>
+#include <iterator>
 
 using namespace std;
-char *choices[] = {
-  "Open",
-  "Save",
-  "Save As"
-  "Exit"
-};
+// Hassan Kedir P2 CSCI 1730 Spring 17
 
-int main(const int argc, const char * argv[]) {
-  ITEM **my_items;
-  MENU *my_menu;
-  WINDOW *my_menu_win;
-  int n_choices;
-  int c;
 
-  File * file = fopen(argv[1], "r");
-  if(file == 0) { perror(argv[0]); }
+//void drawMenu(unsigned int);
+//void openMenu();
 
-  int y, x;
-  initscr();
-  cbreak();
+WINDOW * setSS(WINDOW *);
+WINDOW * edScr;
+vector<string> * getfData();
+void wfData();
 
-  getmaxyx(stdscr, y, x);
-  Window * pad = newpad(y, x);
+vector<string> * fData;
 
-  int txtx;
+FILE * fptr;
+bool fSaved, mOpen;
 
-  while((txtx = fgetc(file) != EOF)
-  {
-    wprintw(pad, "%c", txtc);
-  }//while                                                                                                                                  
+char * fName;
 
-  fclose(file);
 
-  move(0,0);
-  scrollok(pad, TRUE);
-  keypad(pad, TRUE);
-  prefresh(pad, 0, 0, 0, 0, y, x);
+int main(const int argc, const char * argv []) {
+	// Handles cases when argument count is invalid.
+	if (argc>2){ cout << "ERROR: Invalid number of arguments. Only one file name should given after ./1730ed" << endl; return EXIT_FAILURE;}
 
-  //create items                                                                                                                            
-   n_choices = 4;
-   my_items = (ITEM **)calloc(n_choices, sizeof(ITEM *));
-   for(int i = 0; i < n_choices; i++) {
-     my_items[i] = new_item(choices[i], choices[i]);
+	// Attempts to open file if file only one name is given. Creates a new file if file doesn't exist.
+	else if (argc==2){
+		fName = argv[1];
+		fptr = fopen(argv[1], "rw+");
+		// If error occurs when trying to open file or create file
+		if (fptr == nullptr){
+			perror("Opening File");
+			return EXIT_FAILURE;
+		}
+		else {
+			fData = getfData();
+		}
+	}
+
+	// Handles case when no file name is given. Opens a new untitled document.
+	else{
+		fName = "untitled.txt";
+		fptr = nullptr;
+	}
+
+
+	int ssRows, ssCols;
+
+	initscr();
+	cbreak();	// return input one char at a time instead of a waiting for a termination character
+	getmaxyx(stdscr, ssRows, ssCols);	// get max line and width of stdscr
+	WINDOW * edScr = setSS(stdscr);
+
+	getch();
+
+	endwin();
+
+
+
+
+
+//	do{
+//		int ch = getch();
+//    	switch(ch){
+//
+//    	case KEY_F(1):
+//
+//    	case KEY_UP:
+//
+//		case KEY_DOWN:
+//
+//		case KEY_RIGHT:
+//
+//		case KEY_LEFT:
+//    	}	// end ch switch
+//
+//    } while (true);
+
+
+
+}// END MAIN
+
+
+
+
+
+//void drawMenu(unsigned int menuItem){
+//
+//	int c;
+//	char menu[4][] = {
+//			"OPEN",
+//			"SAVE",
+//			"SAVE AS",
+//			"EXIT"
+//	   };
+//	clear();
+//	addstr("MENU");
+//
+//	for(c=0; c<4; c++){
+//		if( c==menuItem){ attron(A_REVERSE); }
+//		mvaddstr(3+(c*2),20,menu[c]);
+//		attroff(A_REVERSE);
+//	}
+//
+//}	// end drawMenu
+//
+//void openMenu(WINDOW * mainWin){
+//	  int mRows, mCols;
+//	  getmaxyx(mainWin, mRows, mCols);
+//	  WINDOW * menu = newwin(0,0,0,0);
+//	  keypad(menu, TRUE);
+//	  drawMenu(0);
+//	  noecho();
+//
+//
+//}	// end openMenu
+
+WINDOW * setSS(WINDOW * stdscr){
+	int ssRows, ssCols;
+	getmaxyx(stdscr, ssRows, ssCols);	// get max line and width of stdscr
+
+	// Print F1:Menu
+	attrset(A_BOLD);
+	move(0,0);
+	addstr("F1: MENU");
+
+	// Print Program Title
+	move(0,(ssCols/2)-8);
+	addstr("CSCI 1730 Editor!");
+
+	// Print File Name
+	move(ssRows-1, 0);
+	addstr(fName.c_str());
+	attroff(A_BOLD);
+
+	// Draw editing area & with border
+	WINDOW * edScrBorder = derwin(stdscr, ssRows-2, ssCols, 1, 0);
+	box(edScrBorder, 0, 0);
+	WINDOW * edScr = derwin(edScrBorder, ssRows-4, ssCols-2,1,1);
+
+	refresh();
+	return edScr;
+}	// end setSS
+
+
+vector<string> * getfData(){
+	vector<string> * fData = new vector<string>;
+
+	if (fptr == nullptr){
+//		fData->push_back("");
+		return fData;
+	}
+
+	string ln("");
+	char c;
+	while((c = fgetc(fptr)) != EOF) {
+		// Read characters into the string ln until \n is reached.
+		if(c != '\n') {
+		  if(c != '\t'){
+			  ln+= c;
+		  }else{ln+= "	"; } // inserts tab
+		}
+		// Once \n is reached, pushes ln to vector
+		else{
+		  ln+= c;
+		  fData->push_back(ln);
+		  ln = "";
+		}
+	}	// end loop for converting file data into vector
+
+	return fData;
+}	// end getfData
+
+void wfData(){
+	// Handles case when no open file is associated with data by creating new file.
+    if(fptr == nullptr){
+    	fptr = fopen(fName, "rw+");
     }
-
-   //create menu                                                                                                                            
-    my_menu = new_menu((ITEM **)my_items);
-
-    //create menu mindow                                                                                                                    
-    my_menu_win = newwin(10,40,4,4);
-    keypad(my_menu_win, TRUE);
-
-    //set main window and sub window                                                                                                        
-    set_menu_win(my_menu, my_menu_win);
-    set_menu_sub(my_menu, derwin(my_menu_win, 6, 38, 3, 1));
-
-    //set menu mark to string "*"                                                                                                           
-    set_menu_mark(my_menu, "*");
-
-    //print a border and title                                                                                                              
-    box(my_menu_win, 0, 0);
-    print_in_middle(my_menu_win, 1, 0, 40, "My Menu", COLOR_PAIR(1));
-    mvwaddch(my_menu_win, 2, 0, ACS_LTEE);
-    mvwhline(my_menu_win, 2, 1, ACS_HLINE, 38);
-    mvwaddch(my_menu_win, 2, 39, ACS_RTEE);
-    mvprintw(LINES - 2, 0, "F1 to exit");
-    refresh();
-
-    //post menu                                                                                                                                      
-    post_menu(my_menu);
-    wrefresh(my_menu_win);
-
-    while((c = wgetch(my_menu_win)) != KEY_F(1))
-      {       switch(c)
-          {case KEY_DOWN:
-              menu_driver(my_menu, REQ_DOWN_ITEM);
-              break;
-          case KEY_UP:
-            menu_driver(my_menu, REQ_UP_ITEM);
-            break;
-          }
-        wrefresh(my_menu_win);
-      }
-
-    // deallocate memory       
-         unpost_menu(my_menu);
-    free_menu(my_menu);
-    for(int i = 0; i < n_choices; ++i)
-      free_item(my_items[i]);
-    endwin();
-
-
-  int line;
-  while (true){
-    int ch = wgetch(pad);
-    if (ch==KEY_DOWN){
-      line++;
-      prefresh(pad, line, 0, 0, 0, y, x);
+    for(vector<string>::iterator i = fData->begin(); i != fData->end(); i++){
+      fprintf(fptr, (*i).c_str());
     }
-    else if (ch==KEY_UP){
-      if (line!=0){ line--; }
-      prefresh(pad, line, 0, 0, 0, y, x);
-    }
-    else{
-      break;
-    }
-  }// end loop for scrolling with arrow keys                                                                                                         
+}	// end wfData
+
+void wedScr(){
 
 
-  endwin();
-  return EXIT_SUCCESS;
-}//main                                                                                                                                              
 
-   
-        
-      
+
+
+
+
+
+
+}
+
+
+
+
+
