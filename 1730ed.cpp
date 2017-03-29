@@ -17,15 +17,17 @@ using namespace std;
 
 WINDOW * setSS(WINDOW *);
 WINDOW * edScr;
-vector<string> * getfData();
+void getfData();
 void wfData();
+void drawedScr(unsigned int , unsigned int , unsigned int);
+void updatefData(char, unsigned int, unsigned int, unsigned int);
 
-vector<string> * fData;
+vector<string> fData;
 
 FILE * fptr;
 bool fSaved, mOpen;
 
-char * fName;
+const char * fName;
 
 
 int main(const int argc, const char * argv []) {
@@ -37,19 +39,18 @@ int main(const int argc, const char * argv []) {
 		fName = argv[1];
 		fptr = fopen(argv[1], "rw+");
 		// If error occurs when trying to open file or create file
-		if (fptr == nullptr){
-			perror("Opening File");
-			return EXIT_FAILURE;
-		}
-		else {
-			fData = getfData();
-		}
+			if (fptr == nullptr){
+				perror("Opening File");
+				return EXIT_FAILURE;
+			}
+		getfData();
 	}
 
 	// Handles case when no file name is given. Opens a new untitled document.
 	else{
 		fName = "untitled.txt";
 		fptr = nullptr;
+		getfData();
 	}
 
 
@@ -58,9 +59,19 @@ int main(const int argc, const char * argv []) {
 	initscr();
 	cbreak();	// return input one char at a time instead of a waiting for a termination character
 	getmaxyx(stdscr, ssRows, ssCols);	// get max line and width of stdscr
-	WINDOW * edScr = setSS(stdscr);
+	edScr = setSS(stdscr);
+	getch();
+
+
+	drawedScr(0,4,4);
 
 	getch();
+
+	wrefresh(edScr);
+	refresh();
+
+	getch();
+
 
 	endwin();
 
@@ -139,69 +150,106 @@ WINDOW * setSS(WINDOW * stdscr){
 
 	// Print File Name
 	move(ssRows-1, 0);
-	addstr(fName.c_str());
+	addstr(fName);
 	attroff(A_BOLD);
 
 	// Draw editing area & with border
 	WINDOW * edScrBorder = derwin(stdscr, ssRows-2, ssCols, 1, 0);
 	box(edScrBorder, 0, 0);
-	WINDOW * edScr = derwin(edScrBorder, ssRows-4, ssCols-2,1,1);
+	WINDOW * edScr = derwin(stdscr, ssRows-4, ssCols-3,2,2);
 
 	refresh();
+	wrefresh(edScr);
 	return edScr;
 }	// end setSS
 
 
-vector<string> * getfData(){
-	vector<string> * fData = new vector<string>;
+void getfData(){
+	vector<string> * tfData = new vector<string>;
 
 	if (fptr == nullptr){
-//		fData->push_back("");
-		return fData;
+		tfData->push_back("");
+		fData = *tfData;
 	}
 
-	string ln("");
+	string ln = "";
 	char c;
 	while((c = fgetc(fptr)) != EOF) {
 		// Read characters into the string ln until \n is reached.
 		if(c != '\n') {
 		  if(c != '\t'){
 			  ln+= c;
-		  }else{ln+= "	"; } // inserts tab
+		  }else{ ln+="	"; } // inserts tab if its a tab char
 		}
-		// Once \n is reached, pushes ln to vector
+		// Once \n is reached, pushes ln to vector. Equivalent to one line of text
 		else{
 		  ln+= c;
-		  fData->push_back(ln);
+		  tfData->push_back(ln);
 		  ln = "";
 		}
 	}	// end loop for converting file data into vector
-
-	return fData;
+	fData = *tfData;
 }	// end getfData
+
 
 void wfData(){
 	// Handles case when no open file is associated with data by creating new file.
     if(fptr == nullptr){
     	fptr = fopen(fName, "rw+");
     }
-    for(vector<string>::iterator i = fData->begin(); i != fData->end(); i++){
+    for(vector<string>::iterator i = fData.begin(); i != fData.end(); i++){
       fprintf(fptr, (*i).c_str());
     }
 }	// end wfData
 
-void wedScr(){
+void drawedScr(unsigned int firstLine, unsigned int cRow, unsigned int cCol){
+	unsigned int esRows, esCols;
+	wmove(edScr, 0,0);
+	getmaxyx(edScr, esRows, esCols);
+	vector<string>::iterator vec;
+	if(!fData.empty() && fData.size() > firstLine){
+		unsigned int lW = 0;	// tracks number of lines written to editor screen
+		for(vec=fData.begin()+firstLine; vec!=fData.end(); vec++){
+			if (lW < (esRows-1)){
+//				if (vec->length() > esCols){
+//					string s = *vec;
+//					do{
+//					waddstr(edScr, s.substr(0, esCols-1).c_str());
+//					lW++;
+//					s = s.substr(esCols-1, esCols-1);
+//					}while (s.length() > esCols);
+//
+//				}
+//				else {
+					waddstr(edScr, vec->c_str());
+					lW++;
+//				}
+
+			}else{
+				break;
+			}
+		} // end for loop
+	}
+
+	wmove(edScr, cRow, cCol);
 
 
+}	// end drawedScr
 
+void updatefData(char c, unsigned int vRow, unsigned int cRow, unsigned int cCol){
 
-
-
-
-
-
-}
-
+//	switch(c){
+//	case KEY_BACKSPACE:
+//		if(cCol > 0){
+//			fData.at(vRow).erase(cCol-1,1);
+//		}
+//		break;
+//	default:
+//		break;
+//
+//
+//	}	// end switch
+}	// end updatefData
 
 
 
